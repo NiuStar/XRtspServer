@@ -10,7 +10,9 @@ import (
 )
 
 type RtspClientConnection struct {
-	client     *RtspClientManager.RtspClient
+	client     *RtspClientManager.RtspClient//这个链接对应的客户端链接
+	manager    *RtspClientManager.ClientManager
+
 	conn       net.Conn
 	url        string
 	pushClient bool //默认为播放客户端，false，否则为推流客户端
@@ -30,7 +32,12 @@ func (conn *RtspClientConnection) Handle() {
 		select {
 		case <-client.Signals:
 			fmt.Println("Exit signals by rtsp")
-			RtspClientManager.RemoveClient(conn.url, conn.conn)
+		if !conn.pushClient && conn.manager != nil {
+			conn.manager.RemoveClient(conn.conn)
+		} else {
+			RtspClientManager.RemoveManager(conn.url)
+		}
+			//RtspClientManager.GetCurrManager(conn.url).RemoveClient(conn.conn)
 			fmt.Printf("------ Session[%s] : closed ------\n", conn.conn.RemoteAddr())
 			return
 		case req := <-client.Outgoing:
@@ -48,10 +55,15 @@ func (conn *RtspClientConnection) Handle() {
 			if resp != nil {
 
 				_, err := conn.conn.Write([]byte(resp.String()))
-				if err != nil {
-					RtspClientManager.RemoveClient(conn.url, conn.conn)
+				if err != nil && !conn.pushClient && conn.manager != nil {
+					conn.manager.RemoveClient(conn.conn)
 					conn.conn.Close()
+					return
+				} else if err != nil {
+					conn.conn.Close()
+					return
 				}
+
 				fmt.Printf("------ Session[%s] : set response ------ \n%s\n", conn.conn.RemoteAddr(), resp)
 			}
 
@@ -86,7 +98,10 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 
 	switch req.Method {
 	case RtspClientManager.DATA:
-		RtspClientManager.Write(conn.url, []byte(req.Body))
+		if   conn.manager != nil {
+		conn.manager.Write([]byte(req.Body))
+	}
+		//RtspClientManager.Write( []byte(req.Body))
 		return nil
 	case RtspClientManager.ANNOUNCE:
 		{
@@ -95,7 +110,9 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 			if exits != nil {
 				fmt.Println(exits)
 			}
-			RtspClientManager.DEBUG(req.URL)
+			manager := RtspClientManager.NewClientManager(req.URL)
+			conn.manager = manager
+			conn.manager.DEBUG()
 			conn.url = req.URL
 			resp := RtspClientManager.NewResponse(RtspClientManager.OK, "OK", cSeq, "")
 			if resp != nil {
@@ -141,6 +158,7 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 		resp.Header.Add("Cache-Control", "no-cache")
 		return resp
 	case RtspClientManager.PLAY:
+
 		if conn.pushClient {
 			conn.client.PushLayer()
 			resp := RtspClientManager.NewResponse(RtspClientManager.OK, "OK", cSeq, "")
@@ -149,12 +167,19 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 			}
 			return resp
 		} else {
-			RtspClientManager.AddClient(conn.url, conn.conn)
+			conn.manager = RtspClientManager.GetCurrManager(req.URL)
+			if  conn.manager != nil {
+				conn.manager.AddClient( conn.conn)
+			}
+
 		}
 		break
 	case RtspClientManager.TEARDOWN:
 		fmt.Println("TEARDOWN")
-		RtspClientManager.RemoveClient(conn.url, conn.conn)
+		if !conn.pushClient  && conn.manager != nil {
+			conn.manager.RemoveClient(conn.conn)
+		}
+		//conn.manager.RemoveClient(conn.url, conn.conn)
 		break
 	default:
 		return RtspClientManager.NewResponse(RtspClientManager.MethodNotAllowed, "Option Not Support", cSeq, "")

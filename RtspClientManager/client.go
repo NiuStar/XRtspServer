@@ -29,15 +29,12 @@ func (c *RtspClient)Write(data[] byte) {
 			if nalType == 28 {
 				isStart := data[4+rtphdr+1]&0x80 != 0
 
-
 				if isStart {
 					c.start = false
 				} else {
 					return
 				}
-
 			}
-
 		}
 	}
 	c.conn.Write(data)

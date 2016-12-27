@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"runtime"
+	"nqc.cn/XRtspServer/RtspClientManager"
+	"time"
 )
 
 type RtspServer struct {
@@ -43,6 +45,21 @@ func (s *RtspServer) Run() {
 		conn := NewRtspClientConnection(clientConn)
 
 		go conn.Handle()
+
+		go func() {
+			for {
+				for key,value := range RtspClientManager.ManagerList {
+					if value != nil {
+						fmt.Println("url:",key,len(value.GetClients()))
+					}
+
+				}
+				time.Sleep(1 * time.Second)
+			}
+
+		}()
+
+
 	}
 
 	fmt.Println("RTSP Stop listenning on", s.tcpListener.Addr())
