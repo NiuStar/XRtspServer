@@ -46,13 +46,44 @@ func (conn *RtspClient) PushLayer() {
 
 
 func (this *RtspClient) ReadRequest() {
+
+
+	if !this.pushClient {
+
+		req, err := ReadRequest(this.conn)
+		if err != nil {
+			//panic(err)
+			fmt.Println("err")
+			return
+		}
+		fmt.Println("no err",req)
+
+		this.Outgoing <- req
+	} else {
+		data,_ := ReadSocket(this.conn)
+
+		if data != nil {
+			req := &Request{
+				Header: make(map[string][]string),
+			}
+			req.Method = DATA
+			req.Body = string(data)
+			//fmt.Println(data)
+			this.Outgoing <- req
+		} else {
+			return
+		}
+	}
+
+}
+
+func (this *RtspClient) ReadData() {
 	defer func() {
 		this.Signals <- true
 	}()
 
-
 	for {
-		if !this.pushClient {
+		/*if !this.pushClient {
 			req, err := ReadRequest(this.conn)
 			if err != nil {
 				//panic(err)
@@ -61,8 +92,11 @@ func (this *RtspClient) ReadRequest() {
 			}
 			fmt.Println("no err")
 			this.Outgoing <- req
-		} else {
-			data := ReadSocket(this.conn)
+		} else */{
+			data,err := ReadSocket(this.conn)
+			if err != nil {
+				return
+			}
 			if data != nil {
 				req := &Request{
 					Header: make(map[string][]string),
@@ -72,7 +106,7 @@ func (this *RtspClient) ReadRequest() {
 				//fmt.Println(data)
 				this.Outgoing <- req
 			} else {
-				return
+				continue
 			}
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	//"io/ioutil"
 )
 
 const (
@@ -154,6 +155,7 @@ type Request struct {
 	URL     string
 	Version string
 	Header  http.Header
+	Content string
 	Body    string
 }
 
@@ -180,7 +182,8 @@ func (r *Request) String() string {
 	return str
 }
 
-func getAllSocket(r io.Reader) []byte {
+func getAllSocket(r io.Reader) ([]byte,error) {
+	//panic("aaaaaa")
 	header := make([]byte, 4)
 	payload := make([]byte, 16384)
 	sync_b := make([]byte, 1)
@@ -191,7 +194,7 @@ func getAllSocket(r io.Reader) []byte {
 
 			fmt.Println("read header error", err)
 
-			return nil
+			return nil,err
 		}
 		if header[0] != 36 {
 			fmt.Println("header[0] != 36")
@@ -199,7 +202,7 @@ func getAllSocket(r io.Reader) []byte {
 			if string(header) != "RTSP" {
 
 				fmt.Println("desync strange data repair", string(header), header)
-				return nil
+				return nil,nil
 
 			} else {
 				rtsp = true
@@ -211,20 +214,20 @@ func getAllSocket(r io.Reader) []byte {
 
 					fmt.Println("desync fatal miss position rtp packet")
 
-					return nil
+					return nil,nil
 				}
 				if n, err := io.ReadFull(r, sync_b); err != nil && n != 1 {
-					return nil
+					return nil,err
 				}
 				if sync_b[0] == 36 {
 					header[0] = sync_b[0]
 					if n, err := io.ReadFull(r, sync_b); err != nil && n != 1 {
-						return nil
+						return nil,err
 					}
 					if sync_b[0] == 0 || sync_b[0] == 1 || sync_b[0] == 2 || sync_b[0] == 3 {
 						header[1] = sync_b[0]
 						if n, err := io.ReadFull(r, header[2:]); err != nil && n == 2 {
-							return nil
+							return nil,err
 						}
 						if !rtsp {
 
@@ -256,15 +259,15 @@ func getAllSocket(r io.Reader) []byte {
 
 			fmt.Println("read payload error", payloadLen, err)
 
-			return nil
+			return nil,err
 		} else {
 
-			return append(header, payload[:n]...)
+			return append(header, payload[:n]...),nil
 		}
 	}
 }
 
-func ReadSocket(r io.Reader) (data []byte) {
+func ReadSocket(r io.Reader) (data []byte,err error) {
 
 	return getAllSocket(r)
 
@@ -303,16 +306,65 @@ func ReadRequest(r io.Reader) (req *Request, err error) {
 			req.Body = string(buffer)
 			return req, nil
 		}*/
-	buffer_i := make([]byte, 2048)
-	leni, err := r.Read(buffer_i)
+	buffer_i := make([]byte, 4096)
+	//buffer_i, err := ioutil.ReadAll(r)// r.Read(buffer_i)
+	//leni := len(buffer_i)
+	fmt.Println("读取数据中")
+	leni,err :=  r.Read(buffer_i)
+	fmt.Println("读取数据结束")
 	if err != nil && leni <= 0 {
+		fmt.Println("没读取到内容")
 		return nil, err
 	}
+
 	buffer := buffer_i[:leni]
+	fmt.Println("buffer:",string(buffer))
+	//old_len := leni
+	{
+		lenc := GetContentLength(string(buffer))
+
+		for {
+			if leni < int(lenc) {
+				n, err := r.Read(buffer_i[leni:])
+				if n > 0 {
+					leni += n
+				}
+				if err != nil {
+					return nil, err
+				}
+				buffer = buffer_i[:leni]
+			} else {
+				break
+			}
+		}
+
+	}
+	/*for {
+		fmt.Println(buffer)
+		fmt.Println(string(buffer))
+		if  buffer[leni - 4] == '\r' && buffer[leni - 3] == '\n' && buffer[leni - 2] == '\r' && buffer[leni - 1] == '\n' {
+			fmt.Println("OK")
+			break
+		}
+		//break
+		fmt.Println([]byte("\r\n"))
+		//fmt.Println(buffer)
+
+		n, err := r.Read(buffer_i[leni:])
+		if n > 0 {
+			leni += n
+		}
+		if err != nil {
+			return nil, err
+		}
+		buffer = buffer_i[:leni]
+	}*/
+
 
 	recv := string(buffer)
 	//	fmt.Println("recv:",recv)
 
+	req.Content = recv
 	context := strings.SplitN(recv, "\r\n\r\n", 2)
 	header := context[0]
 	var body string
@@ -438,4 +490,25 @@ func ReadResponse(r io.Reader) (res *Response, err error) {
 	res.Body = string(body)
 
 	return res, nil
+}
+
+func GetContentLength(header string) int64 {
+	pairs := strings.Split(header, "\r\n")
+	for _, pair := range pairs {
+		parts := strings.SplitN(pair, ": ", 2)
+		if len(parts) == 2 {
+			key := parts[0]
+			value := parts[1]
+			if strings.EqualFold(key,"Content-Length") {
+				v,err := strconv.ParseInt(value,10,64)
+				if err != nil {
+					return 0
+				} else {
+					return v
+				}
+			}
+		}
+
+	}
+	return 0
 }

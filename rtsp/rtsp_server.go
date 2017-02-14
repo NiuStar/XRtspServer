@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net"
 	"runtime"
-	"nqc.cn/XRtspServer/RtspClientManager"
-	"time"
+	//"nqc.cn/XRtspServer/RtspClientManager"
+	//"time"
 )
 
 type RtspServer struct {
@@ -41,23 +41,24 @@ func (s *RtspServer) Run() {
 
 			break
 		}
-
+		fmt.Println("有新连接来了")
 		conn := NewRtspClientConnection(clientConn)
 
 		go conn.Handle()
 
+		/*
 		go func() {
 			for {
 				for key,value := range RtspClientManager.ManagerList {
 					if value != nil {
-						fmt.Println("url:",key,len(value.GetClients()))
+						//fmt.Println("url:",key,len(value.GetClients()))
 					}
 
 				}
 				time.Sleep(1 * time.Second)
 			}
 
-		}()
+		}()*/
 
 
 	}

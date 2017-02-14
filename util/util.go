@@ -3,6 +3,7 @@ package util
 import (
 	"net"
 	"time"
+	"strings"
 )
 
 func GetLocalIPAddress() (string, error) {
@@ -24,4 +25,16 @@ func GetCurrentTimeVal(val *TimeVal) {
 	nSec := time.Now().UnixNano()
 	val.Sec = nSec / 1000000000
 	val.Usec = nSec % (val.Sec * 1000000000)
+}
+
+func GetSdpName(url string) string {
+	list := strings.Split(url,"/")
+
+	for _,value := range list {
+		if strings.Index(value,".sdp") >= 0 {
+			l := strings.Split(value,".sdp")
+			return  l[0]
+		}
+	}
+	return ""
 }
