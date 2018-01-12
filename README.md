@@ -3,21 +3,10 @@
 
 ## Rtsp服务器
 
+#示例代码见
 
-## 示例代码：
-
-	package main
-
-	import "nqc.cn/XRtspServer/stream_server"
-
-	func main() {
-
-		ser := stream_server.NewStreamServer(":8554")
-
-		ser.Run()
-
-	}
-
+https://github.com/NiuStar/RtspServerTest
+#
 
 ## 目前已实现功能：
 
