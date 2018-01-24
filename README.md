@@ -33,6 +33,20 @@ URL：视频流的RTSP地址，
 
 ClientS：观看者的源地址列表
 
+## 测试推流工具：
+
+Android：https://fir.im/EasyPusher
+
+![https://fir.im/EasyPusher](https://camo.githubusercontent.com/b8b01874dd89f31807d793590206c2a5bcc856bd/687474703a2f2f7777772e6561737964617277696e2e6f72672f736b696e2f62732f696d616765732f6170702f456173795075736865725f414e2e706e67)
+
+iOS：https://itunes.apple.com/us/app/easypusher/id1211967057
+
+![https://itunes.apple.com/us/app/easypusher/id1211967057](https://camo.githubusercontent.com/c4aa9106e50380d88529fa6b649784093ff51027/687474703a2f2f7777772e6561737964617277696e2e6f72672f736b696e2f62732f696d616765732f6170702f456173795075736865725f694f532e706e67)
+
+## 测试播放工具：
+
+VLC播放器
+
 ## 下一步开发目标：
 
 
