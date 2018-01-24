@@ -1,24 +1,24 @@
 package RtspClientManager
 
 import (
+	"github.com/NiuStar/log/fmt"
 	"net"
-	"fmt"
 )
 
 type RtspClient struct {
 	start bool
-	conn net.Conn
+	conn  net.Conn
 
 	pushClient bool //默认为播放客户端，false，否则为推流客户端
-	Signals       chan bool
-	Outgoing      chan *Request
+	Signals    chan bool
+	Outgoing   chan *Request
 }
 
 func NewRtspClient(conn net.Conn) *RtspClient {
-	return &RtspClient{conn: conn, start: true,pushClient:false, Signals: make(chan bool, 1), Outgoing: make(chan *Request, 1)}
+	return &RtspClient{conn: conn, start: true, pushClient: false, Signals: make(chan bool, 1), Outgoing: make(chan *Request, 1)}
 }
 
-func (c *RtspClient)Write(data[] byte) {
+func (c *RtspClient) Write(data []byte) {
 	if c.start {
 		if data[0] == 36 && data[1] == 0 {
 			cc := data[4] & 0xF
@@ -44,9 +44,7 @@ func (conn *RtspClient) PushLayer() {
 	conn.pushClient = true
 }
 
-
 func (this *RtspClient) ReadRequest() {
-
 
 	if !this.pushClient {
 
@@ -54,13 +52,14 @@ func (this *RtspClient) ReadRequest() {
 		if err != nil {
 			//panic(err)
 			fmt.Println("err")
+
 			return
 		}
-		fmt.Println("no err",req)
+		fmt.Println("no err", req)
 
 		this.Outgoing <- req
 	} else {
-		data,_ := ReadSocket(this.conn)
+		data, _ := ReadSocket(this.conn)
 
 		if data != nil {
 			req := &Request{
@@ -92,8 +91,9 @@ func (this *RtspClient) ReadData() {
 			}
 			fmt.Println("no err")
 			this.Outgoing <- req
-		} else */{
-			data,err := ReadSocket(this.conn)
+		} else */
+		{
+			data, err := ReadSocket(this.conn)
 			if err != nil {
 				return
 			}
@@ -103,7 +103,7 @@ func (this *RtspClient) ReadData() {
 				}
 				req.Method = DATA
 				req.Body = string(data)
-				//fmt.Println(data)
+				//fmt.Println("PLAYDATA:",data)
 				this.Outgoing <- req
 			} else {
 				continue

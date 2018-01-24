@@ -2,7 +2,8 @@ package RtspClientManager
 
 import (
 	//"errors"
-	"fmt"
+	sfmt "fmt"
+	"github.com/NiuStar/log/fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -171,10 +172,10 @@ func NewRequest(method, url, cSeq, body string) *Request {
 }
 
 func (r *Request) String() string {
-	str := fmt.Sprintf("%s %s %s\r\n", r.Method, r.URL, r.Version)
+	str := sfmt.Sprintf("%s %s %s\r\n", r.Method, r.URL, r.Version)
 	for key, values := range r.Header {
 		for _, value := range values {
-			str += fmt.Sprintf("%s: %s\r\n", key, value)
+			str += sfmt.Sprintf("%s: %s\r\n", key, value)
 		}
 	}
 	str += "\r\n"
@@ -182,7 +183,7 @@ func (r *Request) String() string {
 	return str
 }
 
-func getAllSocket(r io.Reader) ([]byte,error) {
+func getAllSocket(r io.Reader) ([]byte, error) {
 	//panic("aaaaaa")
 	header := make([]byte, 4)
 	payload := make([]byte, 16384)
@@ -194,7 +195,7 @@ func getAllSocket(r io.Reader) ([]byte,error) {
 
 			fmt.Println("read header error", err)
 
-			return nil,err
+			return nil, err
 		}
 		if header[0] != 36 {
 			fmt.Println("header[0] != 36")
@@ -202,7 +203,7 @@ func getAllSocket(r io.Reader) ([]byte,error) {
 			if string(header) != "RTSP" {
 
 				fmt.Println("desync strange data repair", string(header), header)
-				return nil,nil
+				return nil, nil
 
 			} else {
 				rtsp = true
@@ -214,20 +215,20 @@ func getAllSocket(r io.Reader) ([]byte,error) {
 
 					fmt.Println("desync fatal miss position rtp packet")
 
-					return nil,nil
+					return nil, nil
 				}
 				if n, err := io.ReadFull(r, sync_b); err != nil && n != 1 {
-					return nil,err
+					return nil, err
 				}
 				if sync_b[0] == 36 {
 					header[0] = sync_b[0]
 					if n, err := io.ReadFull(r, sync_b); err != nil && n != 1 {
-						return nil,err
+						return nil, err
 					}
 					if sync_b[0] == 0 || sync_b[0] == 1 || sync_b[0] == 2 || sync_b[0] == 3 {
 						header[1] = sync_b[0]
 						if n, err := io.ReadFull(r, header[2:]); err != nil && n == 2 {
-							return nil,err
+							return nil, err
 						}
 						if !rtsp {
 
@@ -259,15 +260,15 @@ func getAllSocket(r io.Reader) ([]byte,error) {
 
 			fmt.Println("read payload error", payloadLen, err)
 
-			return nil,err
+			return nil, err
 		} else {
 
-			return append(header, payload[:n]...),nil
+			return append(header, payload[:n]...), nil
 		}
 	}
 }
 
-func ReadSocket(r io.Reader) (data []byte,err error) {
+func ReadSocket(r io.Reader) (data []byte, err error) {
 
 	return getAllSocket(r)
 
@@ -310,7 +311,7 @@ func ReadRequest(r io.Reader) (req *Request, err error) {
 	//buffer_i, err := ioutil.ReadAll(r)// r.Read(buffer_i)
 	//leni := len(buffer_i)
 	fmt.Println("读取数据中")
-	leni,err :=  r.Read(buffer_i)
+	leni, err := r.Read(buffer_i)
 	fmt.Println("读取数据结束")
 	if err != nil && leni <= 0 {
 		fmt.Println("没读取到内容")
@@ -318,7 +319,7 @@ func ReadRequest(r io.Reader) (req *Request, err error) {
 	}
 
 	buffer := buffer_i[:leni]
-	fmt.Println("buffer:",string(buffer))
+	fmt.Println("buffer:", string(buffer))
 	//old_len := leni
 	{
 		lenc := GetContentLength(string(buffer))
@@ -359,7 +360,6 @@ func ReadRequest(r io.Reader) (req *Request, err error) {
 		}
 		buffer = buffer_i[:leni]
 	}*/
-
 
 	recv := string(buffer)
 	//	fmt.Println("recv:",recv)
@@ -439,10 +439,10 @@ func NewResponse(statusCode int, status, cSeq, body string) *Response {
 }
 
 func (r *Response) String() string {
-	str := fmt.Sprintf("%s %d %s\r\n", r.Version, r.StatusCode, r.Status)
+	str := sfmt.Sprintf("%s %d %s\r\n", r.Version, r.StatusCode, r.Status)
 	for key, values := range r.Header {
 		for _, value := range values {
-			str += fmt.Sprintf("%s: %s\r\n", key, value)
+			str += sfmt.Sprintf("%s: %s\r\n", key, value)
 		}
 	}
 	str += "\r\n"
@@ -499,8 +499,8 @@ func GetContentLength(header string) int64 {
 		if len(parts) == 2 {
 			key := parts[0]
 			value := parts[1]
-			if strings.EqualFold(key,"Content-Length") {
-				v,err := strconv.ParseInt(value,10,64)
+			if strings.EqualFold(key, "Content-Length") {
+				v, err := strconv.ParseInt(value, 10, 64)
 				if err != nil {
 					return 0
 				} else {

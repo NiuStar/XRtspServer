@@ -1,24 +1,24 @@
 package sdp
 
 import (
-	"strings"
-	"fmt"
-	"strconv"
-	"encoding/hex"
 	"encoding/base64"
+	"encoding/hex"
+	"github.com/NiuStar/log/fmt"
+	"strconv"
+	"strings"
 )
 
 type Info struct {
-	AVType string
-	Type int
-	TimeScale int
-	Control string
-	Rtpmap int
-	Config []byte
+	AVType             string
+	Type               int
+	TimeScale          int
+	Control            string
+	Rtpmap             int
+	Config             []byte
 	SpropParameterSets [][]byte
-	PayloadType int
-	SizeLength int
-	IndexLength int
+	PayloadType        int
+	SizeLength         int
+	IndexLength        int
 }
 
 func Decode(content string) (infos []Info) {
@@ -106,4 +106,3 @@ func Decode(content string) (infos []Info) {
 	}
 	return
 }
-

@@ -1,10 +1,9 @@
 package rtsp
 
 import (
-	"fmt"
+	"github.com/NiuStar/log/fmt"
 	"net"
 	"runtime"
-	//"nqc.cn/XRtspServer/RtspClientManager"
 	//"time"
 )
 
@@ -13,6 +12,7 @@ type RtspServer struct {
 }
 
 func NewRtspServer(address string) (*RtspServer, error) {
+
 	server := &RtspServer{}
 
 	tcpListener, err := net.Listen("tcp", address)
@@ -42,26 +42,30 @@ func (s *RtspServer) Run() {
 			break
 		}
 		fmt.Println("有新连接来了")
+		//clientConn.RemoteAddr()
 		conn := NewRtspClientConnection(clientConn)
 
 		go conn.Handle()
 
 		/*
-		go func() {
-			for {
-				for key,value := range RtspClientManager.ManagerList {
-					if value != nil {
-						//fmt.Println("url:",key,len(value.GetClients()))
+			go func() {
+				for {
+					for key,value := range RtspClientManager.ManagerList {
+						if value != nil {
+							//fmt.Println("url:",key,len(value.GetClients()))
+						}
+
 					}
-
+					time.Sleep(1 * time.Second)
 				}
-				time.Sleep(1 * time.Second)
-			}
 
-		}()*/
-
+			}()*/
 
 	}
 
 	fmt.Println("RTSP Stop listenning on", s.tcpListener.Addr())
+}
+
+func (s *RtspServer) GetRtspList() {
+
 }

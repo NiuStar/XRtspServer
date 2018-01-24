@@ -1,20 +1,20 @@
 package rtsp
 
 import (
-	"fmt"
+	"github.com/NiuStar/XRtspServer/RtspClientManager"
+	"github.com/NiuStar/XRtspServer/media"
+	"github.com/NiuStar/XRtspServer/sdp"
+	"github.com/NiuStar/XRtspServer/util"
+	"github.com/NiuStar/log/fmt"
 	"net"
-	"nqc.cn/XRtspServer/RtspClientManager"
-	"nqc.cn/XRtspServer/media"
-	"nqc.cn/XRtspServer/util"
-	"nqc.cn/XRtspServer/sdp"
 	"strconv"
 	"strings"
 	//"time"
 )
 
 type RtspClientConnection struct {
-	client     *RtspClientManager.RtspClient//这个链接对应的客户端链接
-	manager    *RtspClientManager.ClientManager
+	client  *RtspClientManager.RtspClient //这个链接对应的客户端链接
+	manager *RtspClientManager.ClientManager
 
 	control    string
 	session    string
@@ -28,22 +28,25 @@ func NewRtspClientConnection(conn net.Conn) *RtspClientConnection {
 }
 
 func (conn *RtspClientConnection) Handle() {
-	fmt.Printf("------ rtsp client connection[%s] : handling ------\n", conn.conn.RemoteAddr())
+	fmt.Start()
+	defer fmt.Over()
+	fmt.Println("------ rtsp client connection: handling ------\n", conn.conn.RemoteAddr().String())
 
 	client := RtspClientManager.NewRtspClient(conn.conn)
 	conn.client = client
 	client.ReadRequest()
 	for {
+		fmt.Start()
 		select {
 		case <-client.Signals:
 			fmt.Println("Exit signals by rtsp")
-		if !conn.pushClient && conn.manager != nil {
-			conn.manager.RemoveClient(conn.conn)
-		} else {
-			RtspClientManager.RemoveManager(conn.url)
-		}
+			if !conn.pushClient && conn.manager != nil {
+				conn.manager.RemoveClient(conn.conn)
+			} else {
+				RtspClientManager.RemoveManager(conn.url)
+			}
 			//RtspClientManager.GetCurrManager(conn.url).RemoveClient(conn.conn)
-			fmt.Printf("------ Session[%s] : closed ------\n", conn.conn.RemoteAddr())
+			fmt.Println("------ Session[%s] : closed ------\n", conn.conn.RemoteAddr())
 			return
 		case req := <-client.Outgoing:
 
@@ -51,12 +54,12 @@ func (conn *RtspClientConnection) Handle() {
 				conn.url = req.URL
 			}
 
-
 			resp := conn.handleRequestAndReturnResponse(req)
 			if resp != nil {
 				//time.Sleep(1 * time.Second)
 				_, err := conn.conn.Write([]byte(resp.String()))
 				if err != nil && !conn.pushClient && conn.manager != nil {
+					fmt.Println("有人断开链接了1")
 					conn.manager.RemoveClient(conn.conn)
 					conn.conn.Close()
 					return
@@ -64,16 +67,24 @@ func (conn *RtspClientConnection) Handle() {
 					conn.conn.Close()
 					return
 				}
-				fmt.Printf("------ rtsp client connection[%s] : get request ------ \n%s\n", conn.conn.RemoteAddr(), req)
-				fmt.Printf("------ Session[%s] : set response ------ \n%s\n", conn.conn.RemoteAddr(), resp)
+				fmt.Println("------ rtsp client connection: get request ------ \n%s\n", conn.conn.RemoteAddr().String(), req)
+				fmt.Println("------ Session : set response ------ \n%s\n", conn.conn.RemoteAddr().String(), resp)
 			}
 			//处理RTSP请求
 			if req.Method != RtspClientManager.DATA {
 
-				if req.Method != RtspClientManager.PLAY &&  req.Method != RtspClientManager.RECORD {
-					fmt.Println("Player ")
-					client.ReadRequest()
+				if conn.pushClient {
+					if req.Method != RtspClientManager.PLAY && req.Method != RtspClientManager.RECORD {
+						fmt.Println("Player ")
+						client.ReadRequest()
+					}
+				} else {
+					if req.Method != RtspClientManager.RECORD {
+						fmt.Println("Player ")
+						client.ReadRequest()
+					}
 				}
+
 			}
 		}
 	}
@@ -83,12 +94,11 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 
 	cSeq := req.Header.Get("CSeq")
 
-
 	switch req.Method {
 	case RtspClientManager.DATA:
-		if   conn.manager != nil {
-		conn.manager.Write([]byte(req.Body))
-	}
+		if conn.manager != nil {
+			conn.manager.Write([]byte(req.Body))
+		}
 		//RtspClientManager.Write( []byte(req.Body))
 		return nil
 	case RtspClientManager.ANNOUNCE:
@@ -96,8 +106,8 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 			fmt.Println(",req.Content : ", req.Content)
 			//
 			infos := sdp.Decode(req.Content)
-			for _,info := range infos {
-				if strings.EqualFold(info.AVType,"video") {
+			for _, info := range infos {
+				if strings.EqualFold(info.AVType, "video") {
 					conn.control = info.Control
 				}
 			}
@@ -108,7 +118,7 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 			if exits != nil {
 				fmt.Println(exits)
 			}
-			manager := RtspClientManager.NewClientManager(sdpName)
+			manager := RtspClientManager.NewClientManager(req.URL)
 			conn.manager = manager
 			conn.manager.DEBUG()
 			conn.url = req.URL
@@ -119,7 +129,6 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 			//seq,_ := strconv.ParseInt(cSeq,10,64)
 			//cSeq = strconv.FormatInt(seq + 1,10)
 
-
 			resp := RtspClientManager.NewResponse(RtspClientManager.OK, "OK", cSeq, "")
 			if resp != nil {
 				//time.Sleep(1 * time.Second)
@@ -128,12 +137,12 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 
 			//fmt.Printf("------ Session[%s] : set response ------ \n%s\n", conn.conn.RemoteAddr(), resp)
 		}
-		fmt.Printf("------conn.pushClient = true---------- ")
+		fmt.Println("------conn.pushClient = true---------- ")
 		conn.pushClient = true
 
 	case RtspClientManager.OPTIONS:
 		resp := RtspClientManager.NewResponse(RtspClientManager.OK, "OK", cSeq, "")
-		options := strings.Join([]string{RtspClientManager.OPTIONS, RtspClientManager.DESCRIBE, RtspClientManager.SETUP, RtspClientManager.PLAY, RtspClientManager.TEARDOWN,RtspClientManager.RECORD}, ", ")
+		options := strings.Join([]string{RtspClientManager.OPTIONS, RtspClientManager.DESCRIBE, RtspClientManager.SETUP, RtspClientManager.PLAY, RtspClientManager.TEARDOWN, RtspClientManager.RECORD}, ", ")
 		resp.Header["Public"] = []string{options}
 		return resp
 
@@ -154,7 +163,6 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 
 	case RtspClientManager.SETUP:
 
-
 		//fmt.Println("接收到 cSeq:" + cSeq)
 
 		resp := RtspClientManager.NewResponse(RtspClientManager.OK, "OK", cSeq, "")
@@ -163,7 +171,7 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 		if len(Session) <= 0 {
 			Session = "1"
 		}
-		resp.Header.Add("Session",Session)
+		resp.Header.Add("Session", Session)
 		resp.Header.Add("Server", "XVideoStreamServer")
 		resp.Header.Add("Cache-Control", "no-cache")
 		conn.session = Session
@@ -172,13 +180,13 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 	case RtspClientManager.RECORD:
 		{
 			conn.client.PushLayer()
-			fmt.Printf("------conn.client.PushLayer()---------- ")
+			fmt.Println("------conn.client.PushLayer()---------- ")
 			resp := RtspClientManager.NewResponse(RtspClientManager.OK, "OK", cSeq, "")
 			if resp != nil {
 				//conn.conn.Write([]byte(resp.String()))
 			}
 			resp.Header.Add("Session", conn.session)
-			resp.Header.Add("RTP-Info", "url=" + conn.url + "/" + conn.control)
+			resp.Header.Add("RTP-Info", "url="+conn.url+"/"+conn.control)
 			go conn.client.ReadData()
 			return resp
 		}
@@ -187,7 +195,7 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 		//time.Sleep(2 * time.Second)
 		if conn.pushClient {
 			conn.client.PushLayer()
-			fmt.Printf("------conn.client.PushLayer()---------- ")
+			fmt.Println("------conn.client.PushLayer()---------- ")
 			resp := RtspClientManager.NewResponse(RtspClientManager.OK, "OK", cSeq, "")
 			if resp != nil {
 
@@ -195,29 +203,28 @@ func (conn *RtspClientConnection) handleRequestAndReturnResponse(req *RtspClient
 			go conn.client.ReadData()
 			return resp
 		} else {
-			fmt.Printf("------  !conn.client.PushLayer()---------- ")
-			sdpName := util.GetSdpName(req.URL)
-			conn.manager = RtspClientManager.GetCurrManager(sdpName)
-			if  conn.manager != nil {
-				conn.manager.AddClient( conn.conn)
+			fmt.Println("------  !conn.client.PushLayer()---------- ")
+			//sdpName := util.GetSdpName(req.URL)
+			conn.manager = RtspClientManager.GetCurrManager(req.URL)
+			if conn.manager != nil {
+				conn.manager.AddClient(conn.conn)
 			}
-			//go conn.client.ReadData()
 
 		}
 
 		break
 	case RtspClientManager.TEARDOWN:
-		fmt.Println("TEARDOWN")
-		if !conn.pushClient  && conn.manager != nil {
+		fmt.Println("有人断开链接了2 TEARDOWN")
+		if !conn.pushClient && conn.manager != nil {
 			conn.manager.RemoveClient(conn.conn)
 		}
 		//conn.manager.RemoveClient(conn.url, conn.conn)
 		break
 
 	/*case "":
-		{
-			return RtspClientManager.NewResponse(RtspClientManager.OK, "OK", cSeq, "")
-		}*/
+	{
+		return RtspClientManager.NewResponse(RtspClientManager.OK, "OK", cSeq, "")
+	}*/
 	default:
 		return RtspClientManager.NewResponse(RtspClientManager.MethodNotAllowed, "Option Not Support", cSeq, "")
 	}

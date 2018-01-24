@@ -1,7 +1,7 @@
 package stream_server
 
 import (
-	"nqc.cn/XRtspServer/rtsp"
+	"github.com/NiuStar/XRtspServer/rtsp"
 	"sync"
 )
 
@@ -23,11 +23,11 @@ func (s *StreamServer) Wrap(cb func()) {
 	}()
 }
 
-func (s *StreamServer) Run() {
-	rtspServer, err := rtsp.NewRtspServer(s.addr)
-	if err != nil {
-		return
-	}
+func (s *StreamServer) NewRtspServer() (*rtsp.RtspServer, error) {
+	return rtsp.NewRtspServer(s.addr)
+}
+
+func (s *StreamServer) Run(rtspServer *rtsp.RtspServer) {
 
 	s.Wrap(func() {
 		rtspServer.Run()

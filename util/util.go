@@ -2,8 +2,8 @@ package util
 
 import (
 	"net"
-	"time"
 	"strings"
+	"time"
 )
 
 func GetLocalIPAddress() (string, error) {
@@ -28,12 +28,12 @@ func GetCurrentTimeVal(val *TimeVal) {
 }
 
 func GetSdpName(url string) string {
-	list := strings.Split(url,"/")
+	list := strings.Split(url, "/")
 
-	for _,value := range list {
-		if strings.Index(value,".sdp") >= 0 {
-			l := strings.Split(value,".sdp")
-			return  l[0]
+	for _, value := range list {
+		if strings.Index(value, ".sdp") >= 0 {
+			l := strings.Split(value, ".sdp")
+			return l[0]
 		}
 	}
 	return ""

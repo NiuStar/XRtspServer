@@ -4,7 +4,7 @@ import (
 	//"fmt"
 	"sync"
 
-	"nqc.cn/XRtspServer/util"
+	"github.com/NiuStar/XRtspServer/util"
 )
 
 type MediaSession struct {
