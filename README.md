@@ -14,6 +14,24 @@ https://github.com/NiuStar/RtspServerTest
 
 2、RTSP直播
 
+3、API接口
+
+通过调用RtspClientManager.GetCurrManagers()获取目前观看者列表
+
+```Json
+[{
+
+"ClientS": ["192.168.1.92:56181"],
+"Url": "rtsp://192.168.1.92:8554/1_s.sdp"
+
+}]
+```
+
+数组内为推送视频流列表，
+
+URL：视频流的RTSP地址，
+
+ClientS：观看者的源地址列表
 
 ## 下一步开发目标：
 
